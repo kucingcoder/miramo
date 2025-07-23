@@ -11,6 +11,19 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <link href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/viewerjs@1.11.5/dist/viewer.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/viewerjs@1.11.5/dist/viewer.min.js"></script>
+
+    <style>
+        #datatable tbody tr:nth-child(odd) {
+            background-color: #f3f4f6;
+        }
+    
+        #datatable tbody tr:nth-child(even) {
+            background-color: #e5e7eb;
+        }
+    </style>
+
 </head>
 
 <body class="bg-gray-100 p-8">
@@ -46,31 +59,36 @@
 
         <table id="datatable" class="w-full mt-4">
             <thead>
-                <tr class="bg-gray-200">
+                <tr class="bg-gray-300">
+                    <th class="p-2 w-10">No</th>
                     <th class="p-2">Instruction</th>
                     <th class="p-2">Text</th>
                     <th class="p-2">Image</th>
                     <th class="p-2">Output</th>
-                    <th class="p-2">Actions</th>
+                    <th class="p-2 w-24">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in data %}
                 <tr>
-                    <td class="p-2">{{ item.instruction }}</td>
-                    <td class="p-2">{{ item.text }}</td>
+                    <td class="p-2 text-center"></td>
+                    <td class="p-2 max-w-10">{{ item.instruction }}</td>
+                    <td class="p-2 max-w-10">{{ item.text }}</td>
                     <td class="p-2">
                         {% if item.image %}
-                        <img src="{{ url_for('static', filename=item.image.split('static/')[1].replace('\\', '/')) }}" class="w-24" />
+                        <div class="image-container relative inline-block">
+                            <img src="{{ url_for('static', filename=item.image.split('static/')[1].replace('\\', '/')) }}"
+                                class="w-24 cursor-zoom-in" />
+                        </div>
                         {% endif %}
                     </td>
-                    <td class="p-2">{{ item.output }}</td>
-                    <td class="p-2 flex gap-2">
+                    <td class="p-2 max-w-10">{{ item.output }}</td>
+                    <td class="p-2 w-24 flex flex-col gap-2 items-center justify-center">
                         <button
                             onclick="openEditDialog(`{{ item.id }}`, `{{ item.instruction }}`, `{{ item.text }}`, `{{ item.output }}`)"
-                            class="bg-yellow-400 text-white px-2 py-1 rounded">Edit</button>
-                        <form action="/delete/{{ item.id }}" method="POST" class="inline">
-                            <button type="submit" class="bg-red-500 text-white px-2 py-1 rounded">Delete</button>
+                            class="w-full bg-yellow-400 text-white px-2 py-1 rounded">Edit</button>
+                        <form action="/delete/{{ item.id }}" method="POST" class="w-full">
+                            <button type="submit" class="w-full bg-red-500 text-white px-2 py-1 rounded">Delete</button>
                         </form>
                     </td>
                 </tr>
@@ -84,7 +102,7 @@
                 <h2 class="text-xl mb-4" id="dialogTitle">Add Data</h2>
 
                 <textarea name="instruction" id="instruction" placeholder="Instruction"
-                    class="w-full p-2 border mb-2"></textarea>
+                    class="w-full p-2 border mb-2">You are a script converter that transforms Latin text into Arabic Pegon text.</textarea>
                 <textarea name="text" id="text" placeholder="Text (optional)" class="w-full p-2 border mb-2"></textarea>
                 <input type="file" name="image" id="image" class="w-full p-2 border mb-2" />
                 <textarea name="output" id="output" placeholder="Output" class="w-full p-2 border mb-2"></textarea>
@@ -96,35 +114,76 @@
                 </div>
             </form>
         </div>
+    </div>
 
-        <script>
-            $(document).ready(function () {
-                $('#datatable').DataTable();
+    <script>
+        $(document).ready(function () {
+            let table = $('#datatable').DataTable({
+                columnDefs: [{
+                    targets: 0,
+                    searchable: false,
+                    orderable: false
+                }],
+                order: [[1, 'asc']]
             });
 
-            function openAddDialog() {
-                $('#dataDialog').removeClass('hidden');
-                $('#dataForm').attr('action', '/store');
-                $('#dataForm')[0].reset();
-                $('#dialogTitle').text('Add Data');
-                $('#image').prop('required', false);
-            }
+            table.on('order.dt search.dt', function () {
+                table.column(0, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+                    cell.innerHTML = i + 1;
+                });
+            }).draw();
+        });
 
-            function openEditDialog(id, instruction, text, output) {
-                $('#dataDialog').removeClass('hidden');
-                $('#dataForm').attr('action', '/update/' + id);
-                $('#dialogTitle').text('Edit Data');
-                $('#instruction').val(instruction);
-                $('#text').val(text);
-                $('#output').val(output);
-                $('#image').prop('required', false);
-            }
+        document.addEventListener('DOMContentLoaded', function () {
+                const imageContainers = document.querySelectorAll('.image-container');
+                imageContainers.forEach(container => {
+                    const viewer = new Viewer(container.querySelector('img'), {
+                        toolbar: {
+                            zoomIn: 1,
+                            zoomOut: 1,
+                            oneToOne: 0,
+                            reset: 0,
+                            prev: 0,
+                            play: 0,
+                            next: 0,
+                            rotateLeft: 0,
+                            rotateRight: 0,
+                            flipHorizontal: 0,
+                            flipVertical: 0,
+                        },
+                        navbar: false,
+                        title: false,
+                        scalable: false,
+                        movable: false,
+                        transition: true,
+                        fullscreen: false,
+                        inline: false,
+                    });
+                });
+            });
 
-            function closeDialog() {
-                $('#dataDialog').addClass('hidden');
-            }
-        </script>
-    </div>
+        function openAddDialog() {
+            $('#dataDialog').removeClass('hidden');
+            $('#dataForm').attr('action', '/store');
+            $('#dataForm')[0].reset();
+            $('#dialogTitle').text('Add Data');
+            $('#image').prop('required', false);
+        }
+
+        function openEditDialog(id, instruction, text, output) {
+            $('#dataDialog').removeClass('hidden');
+            $('#dataForm').attr('action', '/update/' + id);
+            $('#dialogTitle').text('Edit Data');
+            $('#instruction').val(instruction);
+            $('#text').val(text);
+            $('#output').val(output);
+            $('#image').prop('required', false);
+        }
+
+        function closeDialog() {
+            $('#dataDialog').addClass('hidden');
+        }
+    </script>
 </body>
 
 </html>
